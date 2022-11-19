@@ -32,8 +32,8 @@ const useDecodedAudioBuffer = ({
 };
 
 function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const WIDTH = 200;
-  const HEIGHT = 200;
+  const WIDTH = 45;
+  const HEIGHT = 80;
   const [audioContext] = useState(new AudioContext());
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
@@ -44,47 +44,58 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     }
     const source = audioContext.createBufferSource();
     const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
     source.connect(analyser);
     analyser.connect(audioContext.destination);
     source.buffer = audioBuffer;
     source.start();
 
-    const canvas = canvasRef.current;
-    const canvasContext = canvas?.getContext("2d");
-
     const bufferLength = analyser.frequencyBinCount;
+    console.log(bufferLength);
     const dataArray = new Uint8Array(bufferLength);
+    const imageDataArray = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
     function draw() {
+      const canvas = canvasRef.current;
+      const canvasContext = canvas?.getContext("2d");
       if (!canvasContext) {
         return;
       }
-      const drawVisual = requestAnimationFrame(draw);
+
+      requestAnimationFrame(draw);
 
       analyser.getByteFrequencyData(dataArray);
 
-      canvasContext.fillStyle = "rgb(0, 0, 0)";
-      canvasContext.fillRect(0, 0, WIDTH, HEIGHT);
-      const barWidth = (WIDTH / bufferLength) * 2.5;
-      let barHeight;
-      let x = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = dataArray[i] / 2;
-
-        canvasContext.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
-        canvasContext.fillRect(x, HEIGHT - barHeight / 2, barWidth, barHeight);
-
-        x += barWidth + 1;
+      for (let y = 0; y < bufferLength; ++y) {
+        const value = dataArray[y];
+        for (let x = 0; x < WIDTH; ++x) {
+          const pixelIndex = (y * WIDTH + x) * 4;
+          imageDataArray[pixelIndex] = value;
+          imageDataArray[pixelIndex + 3] = 255;
+        }
       }
+
+      canvasContext.putImageData(
+        new ImageData(imageDataArray, WIDTH, HEIGHT),
+        0,
+        0
+      );
     }
     draw();
+    return () => {
+      canvasRef.current = null;
+    };
   }, [audioBuffer, audioContext]);
 
   return (
     <canvas
       ref={canvasRef}
-      width={200}
-      height={200}
-      style={{ border: "1px solid #d3d3d3" }}
+      width={WIDTH}
+      height={HEIGHT}
+      style={{
+        border: "1px solid #d3d3d3",
+        height: "720px",
+        imageRendering: "pixelated",
+      }}
     />
   );
 }
