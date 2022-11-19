@@ -43,21 +43,29 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
       return;
     }
     const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = HEIGHT * 2;
     source.connect(analyser);
+
+    const mediaStreamDestination = audioContext.createMediaStreamDestination();
+    analyser.connect(mediaStreamDestination);
     analyser.connect(audioContext.destination);
-    source.buffer = audioBuffer;
+
     source.start();
 
     const bufferLength = analyser.frequencyBinCount;
-    console.log(bufferLength);
     const dataArray = new Uint8Array(bufferLength);
     const imageDataArray = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
     const canvas = canvasRef.current;
-    const canvasContext = canvas?.getContext("2d", {
+    if (!canvas) {
+      return;
+    }
+    const canvasContext = canvas.getContext("2d", {
       willReadFrequently: true,
     });
+
     function draw() {
       if (!canvasRef.current || !canvasContext) {
         return;
@@ -97,22 +105,64 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
       canvasContext.putImageData(current, 0, 0);
     }
     draw();
+
+    const captureStream = canvas.captureStream(30);
+    captureStream.addTrack(mediaStreamDestination.stream.getAudioTracks()[0]);
+    const mediaRecorder = new MediaRecorder(captureStream, {
+      mimeType: "video/webm; codecs=h264",
+    });
+    const chunks: Blob[] = [];
+    mediaRecorder.addEventListener("dataavailable", (event) => {
+      chunks.push(event.data);
+    });
+
+    source.addEventListener("ended", () => {
+      mediaRecorder.stop();
+      if (!canvasRef.current) {
+        return;
+      }
+
+      const blob = new Blob(chunks, { type: "video/webm; codecs=h264" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.setAttribute("style", "display: none;");
+      a.href = url;
+      a.download = "video.webm";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        // Clean up - see https://stackoverflow.com/a/48968694 for why it is in a timeout
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 0);
+    });
+
+    mediaRecorder.start(500);
+
+    // Testing without wiring up a stop button
+    setTimeout(() => {
+      source.stop();
+    }, 10000);
+
     return () => {
       canvasRef.current = null;
+      source.stop();
     };
   }, [audioBuffer, audioContext]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={WIDTH}
-      height={HEIGHT}
-      style={{
-        border: "1px solid #d3d3d3",
-        height: "720px",
-        imageRendering: "pixelated",
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        width={WIDTH}
+        height={HEIGHT}
+        style={{
+          border: "1px solid #d3d3d3",
+          height: "720px",
+          imageRendering: "pixelated",
+        }}
+      />
+    </>
   );
 }
 
