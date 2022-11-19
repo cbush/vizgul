@@ -1,33 +1,57 @@
-import { useState, useEffect, useRef } from "react";
-import { useFilePicker, FileContent } from "use-file-picker";
+import { useState, useEffect } from "react";
+import { useFilePicker } from "use-file-picker";
 import "./App.css";
 
-const useAudio = ({
-  fileContent,
+const useDecodedAudioBuffer = ({
+  buffer,
+  audioContext,
 }: {
-  fileContent: FileContent | undefined;
+  buffer: ArrayBuffer | undefined;
+  audioContext: AudioContext;
 }) => {
+  const [decodedData, setDecodedData] = useState<AudioBuffer | undefined>(
+    undefined
+  );
   useEffect(() => {
-    if (fileContent === undefined) {
+    let tornDown = false;
+    if (!buffer || buffer.byteLength === 0) {
+      setDecodedData(undefined);
       return;
     }
-    let tornDown = false;
-    const buffer = fileContent.content as unknown as ArrayBuffer;
-    const audioContext = new AudioContext();
-    audioContext.decodeAudioData(buffer).then((decodedData) => {
+    audioContext.decodeAudioData(buffer).then((newDecodedData) => {
       if (tornDown) {
         return;
       }
-      const source = audioContext.createBufferSource();
-      source.connect(audioContext.destination);
-      source.buffer = decodedData;
-      source.start();
+      setDecodedData(newDecodedData);
     });
     return () => {
       tornDown = true;
     };
-  }, [fileContent]);
+  }, [buffer, audioContext, setDecodedData]);
+  return decodedData;
 };
+
+function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
+  const [audioContext] = useState(new AudioContext());
+  const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
+
+  useEffect(() => {
+    if (!audioBuffer) {
+      return;
+    }
+    const source = audioContext.createBufferSource();
+    const analyser = audioContext.createAnalyser();
+    source.connect(analyser);
+    analyser.connect(audioContext.destination);
+    source.buffer = audioBuffer;
+    source.start();
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+  }, [audioBuffer, audioContext]);
+
+  return <div>It's playing</div>;
+}
 
 function App() {
   const [openFileSelector, { filesContent, loading, errors }] = useFilePicker({
@@ -37,17 +61,13 @@ function App() {
     readFilesContent: true,
   });
 
-  useAudio({ fileContent: filesContent[0] });
-
-  if (loading) {
-    return <p>Loading...</p>;
-  }
+  const [canCreateAudioContext, setCanCreateAudioContext] = useState(false);
 
   if (errors.length) {
     return (
       <div>
         <button onClick={() => openFileSelector()}>
-          Something went wrong, retry!{" "}
+          Something went wrong, retry!
         </button>
         {errors[0].fileSizeTooSmall && "File size is too small!"}
         {errors[0].fileSizeToolarge && "File size is too large!"}
@@ -60,7 +80,27 @@ function App() {
 
   return (
     <div className="App">
-      <button onClick={() => openFileSelector()}>Select files</button>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <button
+          onClick={() => {
+            setCanCreateAudioContext(true);
+            openFileSelector();
+          }}
+        >
+          Select files
+        </button>
+      )}
+      {canCreateAudioContext && (
+        <Visualizer
+          key="visualizer"
+          buffer={
+            filesContent[0] &&
+            (filesContent[0].content as unknown as ArrayBuffer)
+          }
+        />
+      )}
     </div>
   );
 }
