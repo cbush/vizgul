@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFilePicker } from "use-file-picker";
 import "./App.css";
 
@@ -32,7 +32,10 @@ const useDecodedAudioBuffer = ({
 };
 
 function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
+  const WIDTH = 200;
+  const HEIGHT = 200;
   const [audioContext] = useState(new AudioContext());
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
 
   useEffect(() => {
@@ -46,11 +49,44 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     source.buffer = audioBuffer;
     source.start();
 
+    const canvas = canvasRef.current;
+    const canvasContext = canvas?.getContext("2d");
+
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    function draw() {
+      if (!canvasContext) {
+        return;
+      }
+      const drawVisual = requestAnimationFrame(draw);
+
+      analyser.getByteFrequencyData(dataArray);
+
+      canvasContext.fillStyle = "rgb(0, 0, 0)";
+      canvasContext.fillRect(0, 0, WIDTH, HEIGHT);
+      const barWidth = (WIDTH / bufferLength) * 2.5;
+      let barHeight;
+      let x = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        barHeight = dataArray[i] / 2;
+
+        canvasContext.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+        canvasContext.fillRect(x, HEIGHT - barHeight / 2, barWidth, barHeight);
+
+        x += barWidth + 1;
+      }
+    }
+    draw();
   }, [audioBuffer, audioContext]);
 
-  return <div>It's playing</div>;
+  return (
+    <canvas
+      ref={canvasRef}
+      width={200}
+      height={200}
+      style={{ border: "1px solid #d3d3d3" }}
+    />
+  );
 }
 
 function App() {
@@ -92,6 +128,7 @@ function App() {
           Select files
         </button>
       )}
+      <br />
       {canCreateAudioContext && (
         <Visualizer
           key="visualizer"
