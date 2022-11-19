@@ -32,8 +32,8 @@ const useDecodedAudioBuffer = ({
 };
 
 function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const WIDTH = 45;
-  const HEIGHT = 80;
+  const WIDTH = 288 * 2;
+  const HEIGHT = 512 * 2;
   const [audioContext] = useState(new AudioContext());
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
@@ -44,7 +44,7 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     }
     const source = audioContext.createBufferSource();
     const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
+    analyser.fftSize = HEIGHT * 2;
     source.connect(analyser);
     analyser.connect(audioContext.destination);
     source.buffer = audioBuffer;
@@ -54,10 +54,12 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     console.log(bufferLength);
     const dataArray = new Uint8Array(bufferLength);
     const imageDataArray = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
+    const canvas = canvasRef.current;
+    const canvasContext = canvas?.getContext("2d", {
+      willReadFrequently: true,
+    });
     function draw() {
-      const canvas = canvasRef.current;
-      const canvasContext = canvas?.getContext("2d");
-      if (!canvasContext) {
+      if (!canvasRef.current || !canvasContext) {
         return;
       }
 
@@ -67,18 +69,32 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
 
       for (let y = 0; y < bufferLength; ++y) {
         const value = dataArray[y];
-        for (let x = 0; x < WIDTH; ++x) {
+        for (let x = 0; x < WIDTH / 2 + 1; ++x) {
           const pixelIndex = (y * WIDTH + x) * 4;
-          imageDataArray[pixelIndex] = value;
+          imageDataArray[pixelIndex + 3] = 255;
+          if (x === WIDTH / 2) {
+            imageDataArray[pixelIndex + 2] = imageDataArray[pixelIndex + 1];
+            imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
+            imageDataArray[pixelIndex] = value;
+          } else {
+            const nextPixel = (y * WIDTH + x + 1) * 4;
+            imageDataArray[pixelIndex] = imageDataArray[nextPixel];
+            imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
+            imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
+          }
+        }
+        for (let x = WIDTH - 1; x > WIDTH / 2; --x) {
+          const pixelIndex = (y * WIDTH + x) * 4;
+          const nextPixel = (y * WIDTH + x - 1) * 4;
+          imageDataArray[pixelIndex] = imageDataArray[nextPixel];
+          imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
+          imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
           imageDataArray[pixelIndex + 3] = 255;
         }
       }
 
-      canvasContext.putImageData(
-        new ImageData(imageDataArray, WIDTH, HEIGHT),
-        0,
-        0
-      );
+      const current = new ImageData(imageDataArray, WIDTH, HEIGHT);
+      canvasContext.putImageData(current, 0, 0);
     }
     draw();
     return () => {
