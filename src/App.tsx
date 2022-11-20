@@ -38,6 +38,46 @@ const drawFrame = ({
   }
 };
 
+const drawFrame2 = ({
+  bufferLength,
+  dataArray,
+  frameWidth,
+  imageDataArray,
+}: DrawFrameArgs) => {
+  for (let y = 0; y < bufferLength; ++y) {
+    const value = dataArray[y];
+    for (let x = 0; x < frameWidth / 2 + 1; ++x) {
+      const pixelIndex = (y * frameWidth + x) * 4;
+      imageDataArray[pixelIndex + 3] = 255;
+      if (x === frameWidth / 2) {
+        imageDataArray[pixelIndex + 2] = imageDataArray[pixelIndex + 1];
+        imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
+        imageDataArray[pixelIndex] = value;
+      } else {
+        const nextPixel = (y * frameWidth + x + 1) * 4;
+        const valueFactor = value * (x / frameWidth / 2) * 0.1;
+        imageDataArray[pixelIndex] =
+          imageDataArray[nextPixel] + valueFactor * 0.2;
+        imageDataArray[pixelIndex + 1] =
+          imageDataArray[nextPixel + 1] + valueFactor * 0.4;
+        imageDataArray[pixelIndex + 2] =
+          imageDataArray[nextPixel + 2] + valueFactor;
+      }
+    }
+    for (let x = frameWidth - 1; x > frameWidth / 2; --x) {
+      const pixelIndex = (y * frameWidth + x) * 4;
+      const nextPixel = (y * frameWidth + x - 1) * 4;
+      const valueFactor = value * (x / frameWidth / 2) * 0.1;
+      imageDataArray[pixelIndex] = imageDataArray[nextPixel] + valueFactor;
+      imageDataArray[pixelIndex + 1] =
+        imageDataArray[nextPixel + 1] + valueFactor;
+      imageDataArray[pixelIndex + 2] =
+        imageDataArray[nextPixel + 2] + valueFactor / 2;
+      imageDataArray[pixelIndex + 3] = 255;
+    }
+  }
+};
+
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const WIDTH = 288 * 2;
   const HEIGHT = 512 * 2;
@@ -46,6 +86,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
 
   const [play, setPlay] = useState(false);
+  const [frameMode, setFrameMode] = useState(false);
 
   const source = useAudioSource({
     buffer: audioBuffer,
@@ -56,12 +97,15 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
   return (
     <>
       <button onClick={() => setPlay(!play)}>{play ? "Stop" : "Play"}</button>
+      <button onClick={() => setFrameMode(!frameMode)}>
+        {frameMode ? "Frame Mode 2" : "Frame Mode 2"}
+      </button>
       <br />
       <Visualizer
         width={WIDTH}
         height={HEIGHT}
         source={source}
-        drawFrame={drawFrame}
+        drawFrame={frameMode ? drawFrame2 : drawFrame}
       />
     </>
   );
