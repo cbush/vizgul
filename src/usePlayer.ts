@@ -40,7 +40,7 @@ export class Player extends TypedEventTarget<{ stopped: PlayerStoppedEvent }> {
 export const usePlayer = ({
   audioBuffer,
   audioContext,
-}: UsePlayerArgs): Player => {
+}: UsePlayerArgs): { player: Player; isPlaying: boolean } => {
   const [isPlaying, setIsPlaying] = useState(false);
   const player = useMemo(
     () => new Player({ audioContext, setIsPlaying }),
@@ -81,5 +81,5 @@ export const usePlayer = ({
     };
   }, [isPlaying, player, audioBuffer, audioContext]);
 
-  return player;
+  return { player, isPlaying };
 };

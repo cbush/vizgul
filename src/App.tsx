@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useFilePicker } from "use-file-picker";
 import "./App.css";
-import { usePlayer } from "./usePlayer";
+import { AudioBufferPlayer } from "./Player";
 
 const useDecodedAudioBuffer = ({
   buffer,
@@ -39,68 +39,9 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
 
-  const player = usePlayer({ audioBuffer, audioContext });
-
+  /*
+  // Recorder
   useEffect(() => {
-    if (!audioBuffer) {
-      return;
-    }
-    const { audioContext } = player;
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = HEIGHT * 2;
-    player.connect(analyser);
-    analyser.connect(audioContext.destination);
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    const imageDataArray = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-    const canvasContext = canvas.getContext("2d", {
-      willReadFrequently: true,
-    });
-    console.log("draw");
-    function draw() {
-      if (!canvasRef.current || !canvasContext) {
-        return;
-      }
-
-      requestAnimationFrame(draw);
-
-      analyser.getByteFrequencyData(dataArray);
-
-      for (let y = 0; y < bufferLength; ++y) {
-        const value = dataArray[y];
-        for (let x = 0; x < WIDTH / 2 + 1; ++x) {
-          const pixelIndex = (y * WIDTH + x) * 4;
-          imageDataArray[pixelIndex + 3] = 255;
-          if (x === WIDTH / 2) {
-            imageDataArray[pixelIndex + 2] = imageDataArray[pixelIndex + 1];
-            imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
-            imageDataArray[pixelIndex] = value;
-          } else {
-            const nextPixel = (y * WIDTH + x + 1) * 4;
-            imageDataArray[pixelIndex] = imageDataArray[nextPixel];
-            imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
-            imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
-          }
-        }
-        for (let x = WIDTH - 1; x > WIDTH / 2; --x) {
-          const pixelIndex = (y * WIDTH + x) * 4;
-          const nextPixel = (y * WIDTH + x - 1) * 4;
-          imageDataArray[pixelIndex] = imageDataArray[nextPixel];
-          imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
-          imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
-          imageDataArray[pixelIndex + 3] = 255;
-        }
-      }
-
-      const current = new ImageData(imageDataArray, WIDTH, HEIGHT);
-      canvasContext.putImageData(current, 0, 0);
-    }
-    draw();
-
     // Recording
     const mediaStreamDestination = audioContext.createMediaStreamDestination();
     analyser.connect(mediaStreamDestination);
@@ -141,18 +82,81 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     setTimeout(() => {
       player.stop();
     }, 10000);
-
-    return () => {
-      canvasRef.current = null;
-      player.stop();
-    };
-  }, [HEIGHT, WIDTH, player, audioBuffer]);
+  }, []);
+  */
 
   return (
     <>
-      <button onClick={() => player.start()}>Play</button>
-      <button onClick={() => player.stop()}>Stop</button>
       <br />
+      <AudioBufferPlayer
+        context={audioContext}
+        buffer={audioBuffer}
+        play={true}
+        onStart={(source) => {
+          const audioContext = source.context;
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = HEIGHT * 2;
+          source.connect(analyser);
+          analyser.connect(audioContext.destination);
+          const bufferLength = analyser.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+          const imageDataArray = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
+          const canvas = canvasRef.current;
+          if (!canvas) {
+            return;
+          }
+          const canvasContext = canvas.getContext("2d", {
+            willReadFrequently: true,
+          });
+          let done = false;
+          function draw() {
+            if (!canvasRef.current || !canvasContext || done) {
+              return;
+            }
+
+            requestAnimationFrame(draw);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            for (let y = 0; y < bufferLength; ++y) {
+              const value = dataArray[y];
+              for (let x = 0; x < WIDTH / 2 + 1; ++x) {
+                const pixelIndex = (y * WIDTH + x) * 4;
+                imageDataArray[pixelIndex + 3] = 255;
+                if (x === WIDTH / 2) {
+                  imageDataArray[pixelIndex + 2] =
+                    imageDataArray[pixelIndex + 1];
+                  imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
+                  imageDataArray[pixelIndex] = value;
+                } else {
+                  const nextPixel = (y * WIDTH + x + 1) * 4;
+                  imageDataArray[pixelIndex] = imageDataArray[nextPixel];
+                  imageDataArray[pixelIndex + 1] =
+                    imageDataArray[nextPixel + 1];
+                  imageDataArray[pixelIndex + 2] =
+                    imageDataArray[nextPixel + 2];
+                }
+              }
+              for (let x = WIDTH - 1; x > WIDTH / 2; --x) {
+                const pixelIndex = (y * WIDTH + x) * 4;
+                const nextPixel = (y * WIDTH + x - 1) * 4;
+                imageDataArray[pixelIndex] = imageDataArray[nextPixel];
+                imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
+                imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
+                imageDataArray[pixelIndex + 3] = 255;
+              }
+            }
+
+            const current = new ImageData(imageDataArray, WIDTH, HEIGHT);
+            canvasContext.putImageData(current, 0, 0);
+          }
+          draw();
+
+          return () => {
+            done = true;
+          };
+        }}
+      />
       <canvas
         ref={canvasRef}
         width={WIDTH}
