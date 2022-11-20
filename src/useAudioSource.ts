@@ -43,6 +43,7 @@ export const useAudioSource = ({
     const newSource = context.createBufferSource();
     newSource.buffer = buffer;
     newSource.addEventListener("ended", onEnded);
+    newSource.connect(context.destination);
     newSource.start();
     setSource(newSource);
     return () => {
