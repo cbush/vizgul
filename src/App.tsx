@@ -1,36 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useFilePicker } from "use-file-picker";
 import "./App.css";
-import { usePlayer } from "./usePlayer";
-
-const useDecodedAudioBuffer = ({
-  buffer,
-  audioContext,
-}: {
-  buffer: ArrayBuffer | undefined;
-  audioContext: AudioContext;
-}): AudioBuffer | undefined => {
-  const [decodedData, setDecodedData] = useState<AudioBuffer | undefined>(
-    undefined
-  );
-  useEffect(() => {
-    let tornDown = false;
-    if (!buffer || buffer.byteLength === 0) {
-      setDecodedData(undefined);
-      return;
-    }
-    audioContext.decodeAudioData(buffer).then((newDecodedData) => {
-      if (tornDown) {
-        return;
-      }
-      setDecodedData(newDecodedData);
-    });
-    return () => {
-      tornDown = true;
-    };
-  }, [buffer, audioContext, setDecodedData]);
-  return decodedData;
-};
+import { useAudioSource } from "./useAudioSource";
+import { useDecodedAudioBuffer } from "./useDecodedAudioBuffer";
 
 function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const WIDTH = 288 * 2;
@@ -39,30 +11,41 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
 
-  const player = usePlayer({ audioBuffer, audioContext });
+  const [play, setPlay] = useState(false);
+
+  const source = useAudioSource({
+    buffer: audioBuffer,
+    context: audioContext,
+    play,
+  });
 
   useEffect(() => {
-    if (!audioBuffer) {
+    console.log("entry");
+    if (!source) {
+      console.log("no source");
       return;
     }
-    const { audioContext } = player;
+    console.log("wiring up");
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = HEIGHT * 2;
-    player.connect(analyser);
-    analyser.connect(audioContext.destination);
+    source.connect(analyser);
+    source.connect(audioContext.destination);
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     const imageDataArray = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
     const canvas = canvasRef.current;
     if (!canvas) {
+      console.log("no canvas");
       return;
     }
     const canvasContext = canvas.getContext("2d", {
       willReadFrequently: true,
     });
-    console.log("draw");
+    let done = false;
+
     function draw() {
-      if (!canvasRef.current || !canvasContext) {
+      if (done || !canvasRef.current || !canvasContext) {
+        console.log("done drawing");
         return;
       }
 
@@ -101,6 +84,13 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     }
     draw();
 
+    return () => {
+      done = true;
+      console.log("wiring down");
+    };
+  }, [HEIGHT, WIDTH, audioContext, source]);
+
+  /*
     // Recording
     const mediaStreamDestination = audioContext.createMediaStreamDestination();
     analyser.connect(mediaStreamDestination);
@@ -141,17 +131,11 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     setTimeout(() => {
       player.stop();
     }, 10000);
-
-    return () => {
-      canvasRef.current = null;
-      player.stop();
-    };
-  }, [HEIGHT, WIDTH, player, audioBuffer]);
+    */
 
   return (
     <>
-      <button onClick={() => player.start()}>Play</button>
-      <button onClick={() => player.stop()}>Stop</button>
+      <button onClick={() => setPlay(!play)}>{play ? "Stop" : "Play"}</button>
       <br />
       <canvas
         ref={canvasRef}
