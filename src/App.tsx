@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useFilePicker } from "use-file-picker";
 import "./App.css";
+import { usePlayer } from "./usePlayer";
 
 const useDecodedAudioBuffer = ({
   buffer,
@@ -8,7 +9,7 @@ const useDecodedAudioBuffer = ({
 }: {
   buffer: ArrayBuffer | undefined;
   audioContext: AudioContext;
-}) => {
+}): AudioBuffer | undefined => {
   const [decodedData, setDecodedData] = useState<AudioBuffer | undefined>(
     undefined
   );
@@ -38,23 +39,17 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
 
+  const player = usePlayer({ audioBuffer, audioContext });
+
   useEffect(() => {
     if (!audioBuffer) {
       return;
     }
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-
+    const { audioContext } = player;
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = HEIGHT * 2;
-    source.connect(analyser);
-
-    const mediaStreamDestination = audioContext.createMediaStreamDestination();
-    analyser.connect(mediaStreamDestination);
+    player.connect(analyser);
     analyser.connect(audioContext.destination);
-
-    source.start();
-
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     const imageDataArray = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
@@ -65,7 +60,7 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     const canvasContext = canvas.getContext("2d", {
       willReadFrequently: true,
     });
-
+    console.log("draw");
     function draw() {
       if (!canvasRef.current || !canvasContext) {
         return;
@@ -106,6 +101,9 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
     }
     draw();
 
+    // Recording
+    const mediaStreamDestination = audioContext.createMediaStreamDestination();
+    analyser.connect(mediaStreamDestination);
     const captureStream = canvas.captureStream(30);
     captureStream.addTrack(mediaStreamDestination.stream.getAudioTracks()[0]);
     const mediaRecorder = new MediaRecorder(captureStream, {
@@ -116,7 +114,7 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
       chunks.push(event.data);
     });
 
-    source.addEventListener("ended", () => {
+    player.addEventListener("stopped", () => {
       mediaRecorder.stop();
       if (!canvasRef.current) {
         return;
@@ -141,17 +139,20 @@ function Visualizer({ buffer }: { buffer: ArrayBuffer | undefined }) {
 
     // Testing without wiring up a stop button
     setTimeout(() => {
-      source.stop();
+      player.stop();
     }, 10000);
 
     return () => {
       canvasRef.current = null;
-      source.stop();
+      player.stop();
     };
-  }, [audioBuffer, audioContext]);
+  }, [HEIGHT, WIDTH, player, audioBuffer]);
 
   return (
     <>
+      <button onClick={() => player.start()}>Play</button>
+      <button onClick={() => player.stop()}>Stop</button>
+      <br />
       <canvas
         ref={canvasRef}
         width={WIDTH}
