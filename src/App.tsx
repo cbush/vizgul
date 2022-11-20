@@ -3,7 +3,40 @@ import { useFilePicker } from "use-file-picker";
 import "./App.css";
 import { useAudioSource } from "./useAudioSource";
 import { useDecodedAudioBuffer } from "./useDecodedAudioBuffer";
-import { Visualizer } from "./Visualizer";
+import { Visualizer, DrawFrameArgs } from "./Visualizer";
+
+const drawFrame = ({
+  bufferLength,
+  dataArray,
+  frameWidth,
+  imageDataArray,
+}: DrawFrameArgs) => {
+  for (let y = 0; y < bufferLength; ++y) {
+    const value = dataArray[y];
+    for (let x = 0; x < frameWidth / 2 + 1; ++x) {
+      const pixelIndex = (y * frameWidth + x) * 4;
+      imageDataArray[pixelIndex + 3] = 255;
+      if (x === frameWidth / 2) {
+        imageDataArray[pixelIndex + 2] = imageDataArray[pixelIndex + 1];
+        imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
+        imageDataArray[pixelIndex] = value;
+      } else {
+        const nextPixel = (y * frameWidth + x + 1) * 4;
+        imageDataArray[pixelIndex] = imageDataArray[nextPixel];
+        imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
+        imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
+      }
+    }
+    for (let x = frameWidth - 1; x > frameWidth / 2; --x) {
+      const pixelIndex = (y * frameWidth + x) * 4;
+      const nextPixel = (y * frameWidth + x - 1) * 4;
+      imageDataArray[pixelIndex] = imageDataArray[nextPixel];
+      imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
+      imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
+      imageDataArray[pixelIndex + 3] = 255;
+    }
+  }
+};
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const WIDTH = 288 * 2;
@@ -24,7 +57,12 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
     <>
       <button onClick={() => setPlay(!play)}>{play ? "Stop" : "Play"}</button>
       <br />
-      <Visualizer width={WIDTH} height={HEIGHT} source={source} />
+      <Visualizer
+        width={WIDTH}
+        height={HEIGHT}
+        source={source}
+        drawFrame={drawFrame}
+      />
     </>
   );
 }

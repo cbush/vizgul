@@ -4,9 +4,23 @@ export type VisualizerProps = {
   width: number;
   height: number;
   source: AudioNode | undefined;
+  drawFrame(args: DrawFrameArgs): void;
 };
 
-export function Visualizer({ width, height, source }: VisualizerProps) {
+export type DrawFrameArgs = {
+  bufferLength: number;
+  dataArray: Uint8Array;
+  frameWidth: number;
+  frameHeight: number;
+  imageDataArray: Uint8ClampedArray;
+};
+
+export function Visualizer({
+  width,
+  height,
+  source,
+  drawFrame,
+}: VisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -43,31 +57,13 @@ export function Visualizer({ width, height, source }: VisualizerProps) {
 
       analyser.getByteFrequencyData(dataArray);
 
-      for (let y = 0; y < bufferLength; ++y) {
-        const value = dataArray[y];
-        for (let x = 0; x < width / 2 + 1; ++x) {
-          const pixelIndex = (y * width + x) * 4;
-          imageDataArray[pixelIndex + 3] = 255;
-          if (x === width / 2) {
-            imageDataArray[pixelIndex + 2] = imageDataArray[pixelIndex + 1];
-            imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
-            imageDataArray[pixelIndex] = value;
-          } else {
-            const nextPixel = (y * width + x + 1) * 4;
-            imageDataArray[pixelIndex] = imageDataArray[nextPixel];
-            imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
-            imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
-          }
-        }
-        for (let x = width - 1; x > width / 2; --x) {
-          const pixelIndex = (y * width + x) * 4;
-          const nextPixel = (y * width + x - 1) * 4;
-          imageDataArray[pixelIndex] = imageDataArray[nextPixel];
-          imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
-          imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
-          imageDataArray[pixelIndex + 3] = 255;
-        }
-      }
+      drawFrame({
+        bufferLength,
+        dataArray,
+        frameHeight: height,
+        frameWidth: width,
+        imageDataArray,
+      });
 
       const current = new ImageData(imageDataArray, width, height);
       canvasContext.putImageData(current, 0, 0);
@@ -78,7 +74,7 @@ export function Visualizer({ width, height, source }: VisualizerProps) {
       done = true;
       console.log("wiring down");
     };
-  }, [width, height, source]);
+  }, [width, height, source, drawFrame]);
 
   return (
     <canvas
