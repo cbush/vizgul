@@ -1,79 +1,37 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFilePicker } from "use-file-picker";
 import "./App.css";
 import { useAudioSource } from "./useAudioSource";
 import { useDecodedAudioBuffer } from "./useDecodedAudioBuffer";
 import { Visualizer, DrawFrameArgs } from "./Visualizer";
+import { Recorder } from "./Recorder";
 
-const drawFrame = ({
-  bufferLength,
-  dataArray,
-  frameWidth,
-  imageDataArray,
-}: DrawFrameArgs) => {
-  for (let y = 0; y < bufferLength; ++y) {
-    const value = dataArray[y];
-    for (let x = 0; x < frameWidth / 2 + 1; ++x) {
-      const pixelIndex = (y * frameWidth + x) * 4;
-      imageDataArray[pixelIndex + 3] = 255;
-      if (x === frameWidth / 2) {
-        imageDataArray[pixelIndex + 2] = imageDataArray[pixelIndex + 1];
-        imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
-        imageDataArray[pixelIndex] = value;
+const drawFrame = ({ frequencyData, width, pixels }: DrawFrameArgs) => {
+  for (let y = 0; y < frequencyData.length; ++y) {
+    const value = frequencyData[y];
+    for (let x = 0; x < width / 2 + 1; ++x) {
+      const pixelIndex = (y * width + x) * 4;
+      pixels[pixelIndex + 3] = 255;
+      if (x === width / 2) {
+        pixels[pixelIndex + 2] = pixels[pixelIndex + 1];
+        pixels[pixelIndex + 1] = pixels[pixelIndex];
+        pixels[pixelIndex] = value;
       } else {
-        const nextPixel = (y * frameWidth + x + 1) * 4;
-        imageDataArray[pixelIndex] = imageDataArray[nextPixel];
-        imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
-        imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
+        const nextPixel = (y * width + x + 1) * 4;
+        const valueFactor = value * (x / width / 2) * 0.1;
+        pixels[pixelIndex] = pixels[nextPixel] + valueFactor * 0.2;
+        pixels[pixelIndex + 1] = pixels[nextPixel + 1] + valueFactor * 0.4;
+        pixels[pixelIndex + 2] = pixels[nextPixel + 2] + valueFactor;
       }
     }
-    for (let x = frameWidth - 1; x > frameWidth / 2; --x) {
-      const pixelIndex = (y * frameWidth + x) * 4;
-      const nextPixel = (y * frameWidth + x - 1) * 4;
-      imageDataArray[pixelIndex] = imageDataArray[nextPixel];
-      imageDataArray[pixelIndex + 1] = imageDataArray[nextPixel + 1];
-      imageDataArray[pixelIndex + 2] = imageDataArray[nextPixel + 2];
-      imageDataArray[pixelIndex + 3] = 255;
-    }
-  }
-};
-
-const drawFrame2 = ({
-  bufferLength,
-  dataArray,
-  frameWidth,
-  imageDataArray,
-}: DrawFrameArgs) => {
-  for (let y = 0; y < bufferLength; ++y) {
-    const value = dataArray[y];
-    for (let x = 0; x < frameWidth / 2 + 1; ++x) {
-      const pixelIndex = (y * frameWidth + x) * 4;
-      imageDataArray[pixelIndex + 3] = 255;
-      if (x === frameWidth / 2) {
-        imageDataArray[pixelIndex + 2] = imageDataArray[pixelIndex + 1];
-        imageDataArray[pixelIndex + 1] = imageDataArray[pixelIndex];
-        imageDataArray[pixelIndex] = value;
-      } else {
-        const nextPixel = (y * frameWidth + x + 1) * 4;
-        const valueFactor = value * (x / frameWidth / 2) * 0.1;
-        imageDataArray[pixelIndex] =
-          imageDataArray[nextPixel] + valueFactor * 0.2;
-        imageDataArray[pixelIndex + 1] =
-          imageDataArray[nextPixel + 1] + valueFactor * 0.4;
-        imageDataArray[pixelIndex + 2] =
-          imageDataArray[nextPixel + 2] + valueFactor;
-      }
-    }
-    for (let x = frameWidth - 1; x > frameWidth / 2; --x) {
-      const pixelIndex = (y * frameWidth + x) * 4;
-      const nextPixel = (y * frameWidth + x - 1) * 4;
-      const valueFactor = value * (x / frameWidth / 2) * 0.1;
-      imageDataArray[pixelIndex] = imageDataArray[nextPixel] + valueFactor;
-      imageDataArray[pixelIndex + 1] =
-        imageDataArray[nextPixel + 1] + valueFactor;
-      imageDataArray[pixelIndex + 2] =
-        imageDataArray[nextPixel + 2] + valueFactor / 2;
-      imageDataArray[pixelIndex + 3] = 255;
+    for (let x = width - 1; x > width / 2; --x) {
+      const pixelIndex = (y * width + x) * 4;
+      const nextPixel = (y * width + x - 1) * 4;
+      const valueFactor = value * (x / width / 2) * 0.1;
+      pixels[pixelIndex] = pixels[nextPixel] + valueFactor;
+      pixels[pixelIndex + 1] = pixels[nextPixel + 1] + valueFactor;
+      pixels[pixelIndex + 2] = pixels[nextPixel + 2] + valueFactor / 2;
+      pixels[pixelIndex + 3] = 255;
     }
   }
 };
@@ -94,19 +52,40 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
     play,
   });
 
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   return (
     <>
       <button onClick={() => setPlay(!play)}>{play ? "Stop" : "Play"}</button>
       <button onClick={() => setFrameMode(!frameMode)}>
-        {frameMode ? "Frame Mode 2" : "Frame Mode 2"}
+        {frameMode ? "Frame Mode 2" : "Frame Mode 1"}
       </button>
       <br />
       <Visualizer
+        ref={canvasRef}
         width={WIDTH}
         height={HEIGHT}
         source={source}
-        drawFrame={frameMode ? drawFrame2 : drawFrame}
+        drawFrame={frameMode ? drawFrame : drawFrame}
       />
+      {source && canvasRef.current && (
+        <Recorder
+          canvas={canvasRef.current}
+          context={audioContext}
+          isRecording={play}
+          onRecordingStopped={(url) => {
+            const a = document.createElement("a");
+            a.setAttribute("style", "display: none;");
+            a.href = url;
+            a.download = "video.webm";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+            }, 0);
+          }}
+          source={source}
+        />
+      )}
     </>
   );
 }

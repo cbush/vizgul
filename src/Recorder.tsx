@@ -1,43 +1,76 @@
-export {};
-/*
-    // Recording
-    const mediaStreamDestination = audioContext.createMediaStreamDestination();
-    analyser.connect(mediaStreamDestination);
+import { useEffect, useState } from "react";
+
+export type RecorderProps = {
+  context: AudioContext;
+  source: AudioNode;
+  canvas: HTMLCanvasElement;
+  isRecording: boolean;
+  onRecordingStopped(dataUrl: string): void;
+};
+
+export const Recorder = ({
+  context,
+  source,
+  canvas,
+  isRecording,
+  onRecordingStopped,
+}: RecorderProps): JSX.Element => {
+  const [chunks] = useState<Blob[]>(() => []);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | undefined>(
+    undefined
+  );
+
+  // Connect streams, initialize media recorder
+  useEffect(() => {
+    const mediaStreamDestination = context.createMediaStreamDestination();
+    const audioTrack = mediaStreamDestination.stream.getAudioTracks()[0];
+    source.connect(mediaStreamDestination);
+
     const captureStream = canvas.captureStream(30);
-    captureStream.addTrack(mediaStreamDestination.stream.getAudioTracks()[0]);
+    captureStream.addTrack(audioTrack);
+
     const mediaRecorder = new MediaRecorder(captureStream, {
       mimeType: "video/webm; codecs=h264",
     });
-    const chunks: Blob[] = [];
-    mediaRecorder.addEventListener("dataavailable", (event) => {
+    const onDataAvailable = (event: BlobEvent) => {
       chunks.push(event.data);
-    });
+    };
+    mediaRecorder.addEventListener("dataavailable", onDataAvailable);
 
-    player.addEventListener("stopped", () => {
-      mediaRecorder.stop();
-      if (!canvasRef.current) {
+    setMediaRecorder(mediaRecorder);
+
+    return () => {
+      chunks.length = 0;
+      mediaRecorder.removeEventListener("dataavailable", onDataAvailable);
+      captureStream.removeTrack(audioTrack);
+      mediaStreamDestination.disconnect();
+      setMediaRecorder(undefined);
+    };
+  }, [context, canvas, source, chunks]);
+
+  // Control the recorder
+  useEffect(() => {
+    if (!mediaRecorder) {
+      return;
+    }
+
+    if (isRecording && mediaRecorder.state === "inactive") {
+      mediaRecorder.start(500);
+    }
+
+    return () => {
+      if (mediaRecorder.state === "inactive") {
         return;
       }
-
+      mediaRecorder.stop();
       const blob = new Blob(chunks, { type: "video/webm; codecs=h264" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.setAttribute("style", "display: none;");
-      a.href = url;
-      a.download = "video.webm";
-      document.body.appendChild(a);
-      a.click();
+      onRecordingStopped(url);
       setTimeout(() => {
-        // Clean up - see https://stackoverflow.com/a/48968694 for why it is in a timeout
         URL.revokeObjectURL(url);
-        document.body.removeChild(a);
       }, 0);
-    });
+    };
+  }, [mediaRecorder, chunks, isRecording, onRecordingStopped]);
 
-    mediaRecorder.start(500);
-
-    // Testing without wiring up a stop button
-    setTimeout(() => {
-      player.stop();
-    }, 10000);
-    */
+  return <></>;
+};
