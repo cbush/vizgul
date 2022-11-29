@@ -12,23 +12,35 @@ const drawFrame = ({
   pixels,
   lastFrame,
 }: DrawFrameArgs) => {
-  for (let y = 0; y < frequencyData.length; ++y) {
+  for (let y = 0; y < frequencyData.length / 2; ++y) {
     const value = frequencyData[y];
     for (let x = 0; x < width; ++x) {
       if (x === width / 2) {
-        pixels.set(x, y, { r: value, g: value, b: value, a: 255 });
+        pixels.set(x, y, { r: value, g: value, b: 0, a: 255 });
+        pixels.set(x, frequencyData.length - y - 1, {
+          r: value,
+          g: value,
+          b: 0,
+          a: 255,
+        });
       } else {
-        const nextPixel = lastFrame.get(x + (x > width / 2 ? -1 : 1), y);
-        //const valueFactor = value * (x / width / 2) * 0.1;
-        pixels.set(x, y, nextPixel);
+        const nextPixel = lastFrame.get(x + (x > width / 2 ? -1 : 1), y + 1);
+
+        const valueFactor = value * (x / width / 2 - 0.5) * 0.06;
+        pixels.set(x, y, nextPixel.rotate(valueFactor));
+        pixels.set(
+          x,
+          frequencyData.length - y - 1,
+          nextPixel.rotate(valueFactor)
+        );
       }
     }
   }
 };
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const WIDTH = 576;
-  const HEIGHT = 1024;
+  const WIDTH = 576 / 4;
+  const HEIGHT = 1024 / 4;
   const [audioContext] = useState(new AudioContext());
 
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });

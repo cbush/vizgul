@@ -1,4 +1,4 @@
-import { RgbaColor } from "colord";
+import { RgbaColor, Colord } from "colord";
 
 export class Raster {
   readonly data: Uint8ClampedArray;
@@ -26,18 +26,18 @@ export class Raster {
     this._view = new DataView(this.data.buffer);
   }
 
-  get(x: number, y: number): RgbaColor {
+  get(x: number, y: number): Colord {
     if (0 > x || x >= this.width || 0 > y || y >= this.height) {
       throw new Error(`(${x}, ${y}) out of Raster bounds!`);
     }
     const i = (y * this.width + x) * 4;
     const v = this._view;
-    return {
+    return new Colord({
       r: v.getUint8(i),
       g: v.getUint8(i + 1),
       b: v.getUint8(i + 2),
       a: v.getUint8(i + 3),
-    };
+    });
   }
 }
 
@@ -46,14 +46,17 @@ export class MutableRaster extends Raster {
     super(width, height, data, { copyData: true });
   }
 
-  set(x: number, y: number, color: RgbaColor): void {
+  set(x: number, y: number, color: Colord | RgbaColor): void {
     if (0 > x || x >= this.width || 0 > y || y >= this.height) {
       throw new Error(`(${x}, ${y}) out of Raster bounds!`);
     }
+    const rgba = (color as Partial<Colord>).rgba
+      ? (color as Colord).rgba
+      : (color as RgbaColor);
     const index = (y * this.width + x) * 4;
-    this.data[index] = color.r;
-    this.data[index + 1] = color.g;
-    this.data[index + 2] = color.b;
-    this.data[index + 3] = color.a;
+    this.data[index] = rgba.r;
+    this.data[index + 1] = rgba.g;
+    this.data[index + 2] = rgba.b;
+    this.data[index + 3] = rgba.a * 255;
   }
 }

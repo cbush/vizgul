@@ -13,7 +13,7 @@ body {
 .Player canvas {
   border: 1px solid #d3d3d3;
   height: 720px;
-  image-rendering: "pixelated";
+  image-rendering: pixelated;
 }
 
 .controlPanel {
