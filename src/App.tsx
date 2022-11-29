@@ -15,19 +15,12 @@ const drawFrame = ({
   for (let y = 0; y < frequencyData.length; ++y) {
     const value = frequencyData[y];
     for (let x = 0; x < width; ++x) {
-      const pixelIndex = (y * width + x) * 4;
-      pixels[pixelIndex + 3] = 255;
       if (x === width / 2) {
-        pixels[pixelIndex + 2] = pixels[pixelIndex + 1];
-        pixels[pixelIndex + 1] = pixels[pixelIndex];
-        pixels[pixelIndex] = value;
+        pixels.set(x, y, { r: value, g: value, b: value, a: 255 });
       } else {
-        const nextPixel = (y * width + x + (x > width / 2 ? -1 : 1)) * 4;
-        const valueFactor = value * (x / width / 2) * 0.1;
-        pixels[pixelIndex] = lastFrame.data[nextPixel] + valueFactor * 0.2;
-        pixels[pixelIndex + 1] =
-          lastFrame.data[nextPixel + 1] + valueFactor * 0.4;
-        pixels[pixelIndex + 2] = lastFrame.data[nextPixel + 2] + valueFactor;
+        const nextPixel = lastFrame.get(x + (x > width / 2 ? -1 : 1), y);
+        //const valueFactor = value * (x / width / 2) * 0.1;
+        pixels.set(x, y, nextPixel);
       }
     }
   }

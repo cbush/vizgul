@@ -1,4 +1,5 @@
-import { forwardRef, useEffect, useRef } from "react";
+import { forwardRef, useEffect } from "react";
+import { MutableRaster, Raster } from "./Raster";
 import { useForwardedRef } from "./useForwardedRef";
 
 export type VisualizerProps = {
@@ -20,12 +21,12 @@ export type DrawFrameArgs = {
   /**
     Previous frame's image data.
    */
-  lastFrame: ImageData;
+  lastFrame: Raster;
 
   /**
     The pixel data to write into.
    */
-  pixels: Uint8ClampedArray;
+  pixels: MutableRaster;
 };
 
 export type DrawFrameFunction = (args: DrawFrameArgs) => void;
@@ -46,17 +47,24 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       source.connect(analyser);
 
       const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-      const pixels = new Uint8ClampedArray(width * height * 4);
+      const pixels = new MutableRaster(width, height);
       const canvas = canvasRef.current;
       if (!canvas) {
         console.log("no canvas");
         return;
       }
       const canvasContext = canvas.getContext("2d", {
-        willReadFrequently: true,
+        willReadFrequently: false,
       });
       canvasContext?.clearRect(0, 0, width, height);
       let done = false;
+
+      const frames = [
+        new MutableRaster(width, height),
+        new MutableRaster(width, height),
+      ];
+      let frameFlop = true;
+      const current = new ImageData(width, height);
 
       function draw() {
         if (done || !canvasRef.current || !canvasContext) {
@@ -68,16 +76,18 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
 
         analyser.getByteFrequencyData(frequencyData);
 
-        const lastFrame = canvasContext.getImageData(0, 0, width, height);
+        frameFlop = !frameFlop;
+
+        const pixels = frames[frameFlop ? 0 : 1];
         drawFrame({
           frequencyData,
           width,
           height,
-          lastFrame,
+          lastFrame: frames[frameFlop ? 1 : 0],
           pixels,
         });
 
-        const current = new ImageData(pixels, width, height);
+        current.data.set(pixels.data);
         canvasContext.putImageData(current, 0, 0);
       }
       draw();
