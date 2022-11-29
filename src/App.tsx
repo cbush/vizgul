@@ -12,27 +12,24 @@ const drawFrame = ({
   pixels,
   lastFrame,
 }: DrawFrameArgs) => {
-  for (let y = 0; y < frequencyData.length / 2; ++y) {
-    const value = frequencyData[y];
+  for (let y = 0; y < frequencyData.length; ++y) {
+    const value = frequencyData[frequencyData.length - y - 1];
     for (let x = 0; x < width; ++x) {
-      if (x === width / 2) {
-        pixels.set(x, y, { r: value, g: value, b: 0, a: 255 });
-        pixels.set(x, frequencyData.length - y - 1, {
-          r: value,
-          g: value,
-          b: 0,
+      if (x / width > value / 255) {
+        pixels.set(x, y, {
+          r: (value * x * 0.02) % 255,
+          g: (value * x * 0.03) % 255,
+          b: (value * x * 0.01) % 255,
           a: 255,
         });
       } else {
-        const nextPixel = lastFrame.get(x + (x > width / 2 ? -1 : 1), y + 1);
-
-        const valueFactor = value * (x / width / 2 - 0.5) * 0.06;
-        pixels.set(x, y, nextPixel.rotate(valueFactor));
-        pixels.set(
-          x,
-          frequencyData.length - y - 1,
-          nextPixel.rotate(valueFactor)
+        const nextPixel = lastFrame.get(
+          Math.min(x + 1, width - 1),
+          Math.floor(y * (1 - x / width) * (width - x) * 0.01) %
+            frequencyData.length
         );
+        const valueFactor = value * (x / width / 2 - 0.5) * 0.02;
+        pixels.set(x, y, nextPixel.rotate(valueFactor));
       }
     }
   }

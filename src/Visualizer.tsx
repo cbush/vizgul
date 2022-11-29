@@ -47,7 +47,6 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       source.connect(analyser);
 
       const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-      const pixels = new MutableRaster(width, height);
       const canvas = canvasRef.current;
       if (!canvas) {
         console.log("no canvas");
@@ -56,7 +55,7 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       const canvasContext = canvas.getContext("2d", {
         willReadFrequently: false,
       });
-      canvasContext?.clearRect(0, 0, width, height);
+
       let done = false;
 
       const frames = [
@@ -66,8 +65,21 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       let frameFlop = true;
       const current = new ImageData(width, height);
 
+      const offscreenCanvas = new OffscreenCanvas(width, height);
+      const offscreenCanvasContext = offscreenCanvas.getContext(
+        "2d"
+      ) as OffscreenCanvasRenderingContext2D;
+      if (!offscreenCanvasContext) {
+        console.log("no offscreen canvas");
+        return;
+      }
       function draw() {
-        if (done || !canvasRef.current || !canvasContext) {
+        if (
+          done ||
+          !canvasRef.current ||
+          !canvasContext ||
+          !offscreenCanvasContext
+        ) {
           console.log("done drawing");
           return;
         }
@@ -88,7 +100,17 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
         });
 
         current.data.set(pixels.data);
-        canvasContext.putImageData(current, 0, 0);
+        offscreenCanvasContext.putImageData(current, 0, 0);
+        canvasContext.clearRect(0, 0, width * 2, height * 2);
+
+        canvasContext.scale(1, 1);
+        canvasContext.drawImage(offscreenCanvas, 0, 0);
+        canvasContext.scale(1, -1);
+        canvasContext.drawImage(offscreenCanvas, 0, height * -2);
+        canvasContext.scale(-1, -1);
+        canvasContext.drawImage(offscreenCanvas, width * -2, 0);
+        canvasContext.scale(1, -1);
+        canvasContext.drawImage(offscreenCanvas, width * -2, height * -2);
       }
       draw();
 
@@ -98,6 +120,6 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       };
     }, [width, height, source, drawFrame, canvasRef]);
 
-    return <canvas ref={canvasRef} width={width} height={height} />;
+    return <canvas ref={canvasRef} width={width * 2} height={height * 2} />;
   }
 );
