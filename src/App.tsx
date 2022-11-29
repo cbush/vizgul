@@ -6,10 +6,15 @@ import { useDecodedAudioBuffer } from "./useDecodedAudioBuffer";
 import { Visualizer, DrawFrameArgs } from "./Visualizer";
 import { Recorder } from "./Recorder";
 
-const drawFrame = ({ frequencyData, width, pixels }: DrawFrameArgs) => {
+const drawFrame = ({
+  frequencyData,
+  width,
+  pixels,
+  lastFrame,
+}: DrawFrameArgs) => {
   for (let y = 0; y < frequencyData.length; ++y) {
     const value = frequencyData[y];
-    for (let x = 0; x < width / 2 + 1; ++x) {
+    for (let x = 0; x < width; ++x) {
       const pixelIndex = (y * width + x) * 4;
       pixels[pixelIndex + 3] = 255;
       if (x === width / 2) {
@@ -17,28 +22,20 @@ const drawFrame = ({ frequencyData, width, pixels }: DrawFrameArgs) => {
         pixels[pixelIndex + 1] = pixels[pixelIndex];
         pixels[pixelIndex] = value;
       } else {
-        const nextPixel = (y * width + x + 1) * 4;
+        const nextPixel = (y * width + x + (x > width / 2 ? -1 : 1)) * 4;
         const valueFactor = value * (x / width / 2) * 0.1;
-        pixels[pixelIndex] = pixels[nextPixel] + valueFactor * 0.2;
-        pixels[pixelIndex + 1] = pixels[nextPixel + 1] + valueFactor * 0.4;
-        pixels[pixelIndex + 2] = pixels[nextPixel + 2] + valueFactor;
+        pixels[pixelIndex] = lastFrame.data[nextPixel] + valueFactor * 0.2;
+        pixels[pixelIndex + 1] =
+          lastFrame.data[nextPixel + 1] + valueFactor * 0.4;
+        pixels[pixelIndex + 2] = lastFrame.data[nextPixel + 2] + valueFactor;
       }
-    }
-    for (let x = width - 1; x > width / 2; --x) {
-      const pixelIndex = (y * width + x) * 4;
-      const nextPixel = (y * width + x - 1) * 4;
-      const valueFactor = value * (x / width / 2) * 0.1;
-      pixels[pixelIndex] = pixels[nextPixel] + valueFactor;
-      pixels[pixelIndex + 1] = pixels[nextPixel + 1] + valueFactor;
-      pixels[pixelIndex + 2] = pixels[nextPixel + 2] + valueFactor / 2;
-      pixels[pixelIndex + 3] = 255;
     }
   }
 };
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const WIDTH = 288 * 2;
-  const HEIGHT = 512 * 2;
+  const WIDTH = 576;
+  const HEIGHT = 1024;
   const [audioContext] = useState(new AudioContext());
 
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
@@ -54,12 +51,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   return (
-    <>
-      <button onClick={() => setPlay(!play)}>{play ? "Stop" : "Play"}</button>
-      <button onClick={() => setFrameMode(!frameMode)}>
-        {frameMode ? "Frame Mode 2" : "Frame Mode 1"}
-      </button>
-      <br />
+    <div className="Player">
       <Visualizer
         ref={canvasRef}
         width={WIDTH}
@@ -86,7 +78,13 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
           source={source}
         />
       )}
-    </>
+      <div className="controlPanel">
+        <button onClick={() => setPlay(!play)}>{play ? "Stop" : "Play"}</button>
+        <button onClick={() => setFrameMode(!frameMode)}>
+          {frameMode ? "Frame Mode 2" : "Frame Mode 1"}
+        </button>
+      </div>
+    </div>
   );
 }
 

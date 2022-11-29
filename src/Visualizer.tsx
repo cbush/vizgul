@@ -5,7 +5,7 @@ export type VisualizerProps = {
   width: number;
   height: number;
   source: AudioNode | undefined;
-  drawFrame(args: DrawFrameArgs): void;
+  drawFrame: DrawFrameFunction;
 };
 
 export type DrawFrameArgs = {
@@ -27,6 +27,8 @@ export type DrawFrameArgs = {
    */
   pixels: Uint8ClampedArray;
 };
+
+export type DrawFrameFunction = (args: DrawFrameArgs) => void;
 
 export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
   ({ width, height, source, drawFrame }, ref) => {
@@ -84,19 +86,8 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
         done = true;
         console.log("wiring down");
       };
-    }, [width, height, source, drawFrame]);
+    }, [width, height, source, drawFrame, canvasRef]);
 
-    return (
-      <canvas
-        ref={canvasRef}
-        width={width}
-        height={height}
-        style={{
-          border: "1px solid #d3d3d3",
-          height: "720px",
-          imageRendering: "pixelated",
-        }}
-      />
-    );
+    return <canvas ref={canvasRef} width={width} height={height} />;
   }
 );
