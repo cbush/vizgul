@@ -1,7 +1,4 @@
-import { RgbaColor, Colord, extend } from "colord";
-import mixPlugin from "colord/plugins/mix";
-
-extend([mixPlugin]);
+import { Color } from "./Color";
 
 export class Raster {
   readonly data: Uint8ClampedArray;
@@ -29,7 +26,7 @@ export class Raster {
     this._view = new DataView(this.data.buffer);
   }
 
-  get(x: number, y: number): RgbaColor {
+  get(x: number, y: number): Color {
     if (0 > x || x >= this.width || 0 > y || y >= this.height) {
       throw new Error(`(${x}, ${y}) out of Raster bounds!`);
     }
@@ -44,26 +41,20 @@ export class Raster {
   }
 }
 
-export type GetSetColorFunction = (c: RgbaColor) => RgbaColor;
+export type GetSetColorFunction = (c: Color) => Color;
 
 export class MutableRaster extends Raster {
   constructor(width: number, height: number, data?: Uint8ClampedArray) {
     super(width, height, data, { copyData: true });
   }
 
-  set(
-    x: number,
-    y: number,
-    colorIn: Colord | RgbaColor | GetSetColorFunction
-  ): void {
+  set(x: number, y: number, colorIn: Color | GetSetColorFunction): void {
     if (0 > x || x >= this.width || 0 > y || y >= this.height) {
       throw new Error(`(${x}, ${y}) out of Raster bounds!`);
     }
     const color =
       typeof colorIn === "function" ? colorIn(this.get(x, y)) : colorIn;
-    const rgba = (color as Partial<Colord>).rgba
-      ? (color as Colord).rgba
-      : (color as RgbaColor);
+    const rgba = color;
     const index = (y * this.width + x) * 4;
     this.data[index] = rgba.r;
     this.data[index + 1] = rgba.g;

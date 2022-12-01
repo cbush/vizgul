@@ -19,6 +19,11 @@ export type DrawFrameArgs = {
   frequencyData: Uint8Array;
 
   /**
+    Waveform data for the current frame.
+   */
+  waveformData: Uint8Array;
+
+  /**
     Previous frame's image data.
    */
   lastFrame: Raster;
@@ -47,6 +52,7 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       source.connect(analyser);
 
       const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+      const waveformData = new Uint8Array(analyser.fftSize);
       const canvas = canvasRef.current;
       if (!canvas) {
         console.log("no canvas");
@@ -87,12 +93,14 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
         requestAnimationFrame(draw);
 
         analyser.getByteFrequencyData(frequencyData);
+        analyser.getByteTimeDomainData(waveformData);
 
         frameFlop = !frameFlop;
 
         const pixels = frames[frameFlop ? 0 : 1];
         drawFrame({
           frequencyData,
+          waveformData,
           width,
           height,
           lastFrame: frames[frameFlop ? 1 : 0],

@@ -8,8 +8,8 @@ import { Recorder } from "./Recorder";
 import { useDrawFrameController } from "./DrawFrameController";
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const WIDTH = 576 / 2;
-  const HEIGHT = 1024 / 2;
+  const WIDTH = 576 / 4;
+  const HEIGHT = 1024 / 4;
   const [audioContext] = useState(new AudioContext());
 
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
