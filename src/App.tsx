@@ -3,53 +3,28 @@ import { useFilePicker } from "use-file-picker";
 import "./App.css";
 import { useAudioSource } from "./useAudioSource";
 import { useDecodedAudioBuffer } from "./useDecodedAudioBuffer";
-import { Visualizer, DrawFrameArgs } from "./Visualizer";
+import { Visualizer } from "./Visualizer";
 import { Recorder } from "./Recorder";
-
-const drawFrame = ({
-  frequencyData,
-  width,
-  pixels,
-  lastFrame,
-}: DrawFrameArgs) => {
-  for (let y = 0; y < frequencyData.length; ++y) {
-    const value = frequencyData[frequencyData.length - y - 1];
-    for (let x = 0; x < width; ++x) {
-      if (x / width > value / 255) {
-        pixels.set(x, y, {
-          r: (value * x * 0.02) % 255,
-          g: (value * x * 0.03) % 255,
-          b: (value * x * 0.01) % 255,
-          a: 255,
-        });
-      } else {
-        const nextPixel = lastFrame.get(
-          Math.min(x + 1, width - 1),
-          Math.floor(y * (1 - x / width) * (width - x) * 0.01) %
-            frequencyData.length
-        );
-        const valueFactor = value * (x / width / 2 - 0.5) * 0.02;
-        pixels.set(x, y, nextPixel.rotate(valueFactor));
-      }
-    }
-  }
-};
+import { useDrawFrameController } from "./DrawFrameController";
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const WIDTH = 576 / 4;
-  const HEIGHT = 1024 / 4;
+  const WIDTH = 576 / 2;
+  const HEIGHT = 1024 / 2;
   const [audioContext] = useState(new AudioContext());
 
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
 
   const [play, setPlay] = useState(false);
   const [frameMode, setFrameMode] = useState(false);
+  const [saveRecordings, setSaveRecordings] = useState(false);
 
   const source = useAudioSource({
     buffer: audioBuffer,
     context: audioContext,
     play,
   });
+
+  const { controller, drawFrame } = useDrawFrameController();
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   return (
@@ -67,6 +42,9 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
           context={audioContext}
           isRecording={play}
           onRecordingStopped={(url) => {
+            if (!saveRecordings) {
+              return;
+            }
             const a = document.createElement("a");
             a.setAttribute("style", "display: none;");
             a.href = url;
@@ -85,6 +63,16 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
         <button onClick={() => setFrameMode(!frameMode)}>
           {frameMode ? "Frame Mode 2" : "Frame Mode 1"}
         </button>
+        <label>
+          <input
+            type="checkbox"
+            checked={saveRecordings}
+            onChange={() => setSaveRecordings(!saveRecordings)}
+          />
+          Save Recordings
+        </label>
+        <br />
+        {controller}
       </div>
     </div>
   );

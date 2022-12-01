@@ -20,3 +20,7 @@ body {
   padding-left: 12pt;
   min-width: 576px;
 }
+
+.DrawFrameController {
+  flex-direction: column;
+}
