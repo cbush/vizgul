@@ -40,7 +40,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
         <Recorder
           canvas={canvasRef.current}
           context={audioContext}
-          isRecording={play}
+          isRecording={play && saveRecordings}
           onRecordingStopped={(url) => {
             if (!saveRecordings) {
               return;

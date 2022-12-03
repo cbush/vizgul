@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Slider } from "rsuite";
 import { DrawFrameArgs, DrawFrameFunction } from "./Visualizer";
 import { mix } from "./Color";
@@ -7,24 +7,30 @@ export function useDrawFrameController() {
   const drawFrameRef = useRef<DrawFrameFunction>((args) => {});
   const [something, setSomething] = useState(0);
 
+  // Don't actually re-render due to frame function change -- the visualizer
+  // animation callback is already running every frame
+  const drawFrame = useCallback((args: DrawFrameArgs) => {
+    drawFrameRef.current(args);
+  }, []);
+
   useEffect(() => {
     const drawFrame = ({
       frequencyData,
-      waveformData,
       width,
       height,
       pixels,
       lastFrame,
     }: DrawFrameArgs) => {
+      const [, maxIndex] = frequencyData.reduce(
+        (acc, cur, i) => (cur > acc[0] ? [cur, i] : acc),
+        [0, 0]
+      );
       for (let y = 0; y < height; ++y) {
-        const value = frequencyData[frequencyData.length - Math.floor(y) - 1];
-        const amplitude = Math.floor(
-          (waveformData[Math.floor(y * 2)] + 128) * (something / 100)
-        );
-
+        const index = frequencyData.length - Math.floor(y) - 1;
+        const value = frequencyData[index];
         for (let x = 0; x < width; ++x) {
-          if (x === amplitude) {
-            pixels.set(x, y, { r: 5, g: 200, b: 244, a: 255 });
+          if (maxIndex === index) {
+            pixels.set(x, y, { r: 255, g: 255, b: 0, a: 255 });
           } else if (x / ((value / 255) * width) >= value / 255) {
             pixels.set(x, y, (c) =>
               mix(
@@ -57,9 +63,7 @@ export function useDrawFrameController() {
     </div>
   );
   return {
-    drawFrame: (args: DrawFrameArgs) => {
-      drawFrameRef.current(args);
-    },
+    drawFrame,
     controller,
   };
 }

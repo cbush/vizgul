@@ -1,4 +1,4 @@
-import { forwardRef, useEffect } from "react";
+import { MutableRefObject, forwardRef, useEffect } from "react";
 import { MutableRaster, Raster } from "./Raster";
 import { useForwardedRef } from "./useForwardedRef";
 
@@ -128,6 +128,13 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       };
     }, [width, height, source, drawFrame, canvasRef]);
 
-    return <canvas ref={canvasRef} width={width * 2} height={height * 2} />;
+    return (
+      <canvas
+        key="visualizer"
+        ref={canvasRef}
+        width={width * 2}
+        height={height * 2}
+      />
+    );
   }
 );
