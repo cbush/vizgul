@@ -26,40 +26,57 @@ export function useDrawFrameController() {
       pixels,
       lastFrame,
     }: DrawFrameArgs) => {
-      const logIndex = (i: number): number => {
-        if (i === 0) {
-          return 0;
-        }
-        const iNormalized = i / height;
-        const desiredBucketsPerScanline = Math.pow(
-          iNormalized *
-            (Math.log2(frequencyData.length / 2) / Math.log2(height)),
-          6
-        );
-        return logIndex(i - 1) + desiredBucketsPerScanline;
-      };
+      const scanlineFactor =
+        Math.log2(frequencyData.length) / Math.log2(height / 2);
+      const logIndex = (() => {
+        const cache: Record<number, number> = {};
+        return (i: number): number => {
+          if (cache[i] !== undefined) {
+            return cache[i];
+          }
+          if (i === 0) {
+            cache[i] = 0;
+            return 0;
+          }
+
+          const iNormalized = i / height;
+          const desiredBucketsPerScanline = Math.pow(
+            iNormalized * scanlineFactor,
+            6
+          );
+          const result = logIndex(i - 1) + desiredBucketsPerScanline;
+          cache[i] = result;
+          return result;
+        };
+      })();
       const logIndexSubarray = (data: Uint8Array, i: number) => {
         const from = Math.round(logIndex(i));
         const to = Math.round(logIndex(i + 1));
-        // console.log(`${i}, ${from}, ${to}, ${to - from}`);
         return data.subarray(from, to + (to === from ? 1 : 0));
       };
 
       for (let i = 0; i < height; ++i) {
         const y = height - i - 1;
-        const subarray = logIndexSubarray(frequencyData, i);
+        const subarray = logIndexSubarray(
+          frequencyData,
+          // It seems the first half of the frequencies are useless
+          Math.floor(i / 2) + height / 2
+        );
         const value =
-          subarray.reduce((acc, cur) => acc + cur, 0) / subarray.length;
+          subarray.reduce((acc, cur) => acc + cur, 0) / (subarray.length / 3);
         for (let x = 0; x < width; ++x) {
           if (x === width - 1) {
             pixels.set(x, y, {
-              r: clamp(value - 256 * 2, 0, 255),
+              r: clamp(value - 256, 0, 255),
               g: clamp(value, 0, 255),
-              b: clamp(value - 256, 0, 255),
+              b: clamp(value - 256 * 2, 0, 255),
               a: 255,
             });
           } else {
-            const nextPixel = lastFrame.get(clamp(x + 1, 0, width - 1), y);
+            const nextPixel = lastFrame.get(
+              clamp(Math.floor(x + width * 0.05), 0, width - 1),
+              y
+            );
             pixels.set(x, y, nextPixel);
           }
         }

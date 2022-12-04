@@ -9,7 +9,7 @@ import { useDrawFrameController } from "./DrawFrameController";
 import { Slider } from "rsuite";
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const [height, setHeight] = useState(56); //1024 / 4;
+  const height = 512;
   const WIDTH = Math.floor(height * (9 / 16));
   const [audioContext] = useState(new AudioContext());
 
@@ -83,13 +83,6 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
           />
           Mirror
         </label>
-        <br />
-        <Slider
-          onChange={setHeight}
-          value={height}
-          min={height}
-          max={1024 / 4}
-        />
         <br />
         {controller}
       </div>

@@ -1,8 +1,8 @@
-export const EXPECTED_SAMPLERATE_HZ = 44100;
+export const EXPECTED_SAMPLERATE_HZ = 96000;
 
 // Max (imposed by Web API) is 2^15. Higher == finer detail but more latency
 // between sound and image.
-export const EXPECTED_FFT_SIZE = Math.pow(2, 12);
+export const EXPECTED_FFT_SIZE = Math.pow(2, 13);
 
 // How many frequencies in each bucket
 export const FFT_BUCKET_FREQ_SIZE = EXPECTED_SAMPLERATE_HZ / EXPECTED_FFT_SIZE;
