@@ -19,7 +19,7 @@ export const hzToFftIndex = (frequencyHz: number): number => {
   return Math.floor(frequencyHz / FFT_BUCKET_FREQ_SIZE);
 };
 
-export const EXPECTED_FIRST_USEFUL_FFT_INDEX = hzToFftIndex(20);
+export const EXPECTED_FIRST_USEFUL_FFT_INDEX = hzToFftIndex(50);
 
 const equalTempered = (halfStepsFromA4: number, A4Hz = 440) => {
   return A4Hz * Math.pow(TWELFTH_ROOT_OF_2, halfStepsFromA4);

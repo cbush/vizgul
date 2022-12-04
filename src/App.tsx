@@ -6,10 +6,11 @@ import { useDecodedAudioBuffer } from "./useDecodedAudioBuffer";
 import { Visualizer } from "./Visualizer";
 import { Recorder } from "./Recorder";
 import { useDrawFrameController } from "./DrawFrameController";
+import { Slider } from "rsuite";
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
-  const WIDTH = 576 / 4;
-  const HEIGHT = 1024 / 4;
+  const [height, setHeight] = useState(56); //1024 / 4;
+  const WIDTH = Math.floor(height * (9 / 16));
   const [audioContext] = useState(new AudioContext());
 
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
@@ -33,7 +34,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
       <Visualizer
         ref={canvasRef}
         width={WIDTH}
-        height={HEIGHT}
+        height={height}
         source={source}
         drawFrame={frameMode ? drawFrame : drawFrame}
         mirror={mirror}
@@ -83,7 +84,13 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
           Mirror
         </label>
         <br />
-
+        <Slider
+          onChange={setHeight}
+          value={height}
+          min={height}
+          max={1024 / 4}
+        />
+        <br />
         {controller}
       </div>
     </div>
