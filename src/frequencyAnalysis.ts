@@ -1,17 +1,25 @@
 export const EXPECTED_SAMPLERATE_HZ = 44100;
-export const EXPECTED_FFT_SIZE = Math.pow(2, 15); // Maximum granularity;
+
+// Max (imposed by Web API) is 2^15. Higher == finer detail but more latency
+// between sound and image.
+export const EXPECTED_FFT_SIZE = Math.pow(2, 12);
 
 // How many frequencies in each bucket
-const FFT_BUCKET_FREQ_SIZE = EXPECTED_SAMPLERATE_HZ / EXPECTED_FFT_SIZE;
+export const FFT_BUCKET_FREQ_SIZE = EXPECTED_SAMPLERATE_HZ / EXPECTED_FFT_SIZE;
 
 // Ratio in equal-tempered tuning. See
 // https://pages.mtu.edu/~suits/NoteFreqCalcs.html
 const TWELFTH_ROOT_OF_2 = Math.pow(2, 1 / 12);
 
-export const fftIndexToFreqRange = (index: number): [number, number] => {
-  const low = (index + 1) * FFT_BUCKET_FREQ_SIZE;
-  return [low, low + FFT_BUCKET_FREQ_SIZE];
+export const fftIndexToHz = (index: number): number => {
+  return (index + 1) * FFT_BUCKET_FREQ_SIZE + FFT_BUCKET_FREQ_SIZE / 2;
 };
+
+export const hzToFftIndex = (frequencyHz: number): number => {
+  return Math.floor(frequencyHz / FFT_BUCKET_FREQ_SIZE);
+};
+
+export const EXPECTED_FIRST_USEFUL_FFT_INDEX = hzToFftIndex(20);
 
 const equalTempered = (halfStepsFromA4: number, A4Hz = 440) => {
   return A4Hz * Math.pow(TWELFTH_ROOT_OF_2, halfStepsFromA4);

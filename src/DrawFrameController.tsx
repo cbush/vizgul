@@ -2,9 +2,10 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Slider } from "rsuite";
 import { DrawFrameArgs, DrawFrameFunction } from "./Visualizer";
 import { mix } from "./Color";
+import clamp from "clamp";
 import {
-  noteInfoFromFrequency,
-  fftIndexToFreqRange,
+  fftIndexToHz,
+  EXPECTED_FIRST_USEFUL_FFT_INDEX,
 } from "./frequencyAnalysis";
 
 export function useDrawFrameController() {
@@ -29,39 +30,44 @@ export function useDrawFrameController() {
         (acc, cur, i) => (cur > acc[0] ? [cur, i] : acc),
         [0, 0]
       );
-      const frequency = fftIndexToFreqRange(maxIndex);
+
       /*
+      const frequency = fftIndexToHz(maxIndex);      
       console.log(
         noteInfoFromFrequency(frequency[0] + (frequency[1] - frequency[0]) / 2)
           .nameAndOctave
       );
       */
 
-      for (let y = 0; y < height; ++y) {
-        const index = frequencyData.length - Math.floor(y) - 1;
-        const value = frequencyData[index];
+      const logIndex = (i: number) =>
+        Math.floor(Math.pow(2, (i / height) * Math.log2(frequencyData.length)));
+
+      const logIndexSubarray = (data: Uint8Array, i: number) => {
+        const from = logIndex(i) + EXPECTED_FIRST_USEFUL_FFT_INDEX;
+        const to = logIndex(i + 1) + EXPECTED_FIRST_USEFUL_FFT_INDEX;
+
+        return data.subarray(from, from === to ? to + 1 : to);
+      };
+
+      for (let i = 0; i < height; ++i) {
+        const y = height - i - 1;
+        const subarray = logIndexSubarray(frequencyData, i);
+        const value =
+          subarray.reduce((acc, cur) => acc + cur, 0) / (subarray.length / 3);
         for (let x = 0; x < width; ++x) {
-          if (maxIndex === index) {
-            pixels.set(x, y, { r: 255, g: 255, b: 0, a: 255 });
-          } else if (x / ((value / 255) * width) >= value / 255) {
-            pixels.set(x, y, (c) =>
-              mix(
-                c,
-                {
-                  r: (value * (something / 100)) % 255,
-                  g: value % 255,
-                  b: (value * x * (something / 100)) % 255,
-                  a: 255,
-                },
-                1
-              )
-            );
+          if (x / ((value / (255 * 3)) * width) >= value / (255 * 3)) {
+            pixels.set(x, y, {
+              r: clamp(value, 0, 255),
+              g: clamp(value - 255, 0, 255),
+              b: clamp(value - 255 * 2, 0, 255),
+              a: 255,
+            });
           } else {
             const nextPixel = lastFrame.get(
               Math.min(x + 1, width - 1),
               Math.floor(y + something * 0.1) % height
             );
-            pixels.set(x, y, (c) => mix(nextPixel, c, 0));
+            pixels.set(x, y, (c) => mix(nextPixel, c, 0.4));
           }
         }
       }

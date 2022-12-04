@@ -17,6 +17,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const [play, setPlay] = useState(false);
   const [frameMode, setFrameMode] = useState(false);
   const [saveRecordings, setSaveRecordings] = useState(false);
+  const [mirror, setMirror] = useState(false);
 
   const source = useAudioSource({
     buffer: audioBuffer,
@@ -35,6 +36,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
         height={HEIGHT}
         source={source}
         drawFrame={frameMode ? drawFrame : drawFrame}
+        mirror={mirror}
       />
       {source && canvasRef.current && (
         <Recorder
@@ -72,6 +74,16 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
           Save Recordings
         </label>
         <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={mirror}
+            onChange={() => setMirror(!mirror)}
+          />
+          Mirror
+        </label>
+        <br />
+
         {controller}
       </div>
     </div>

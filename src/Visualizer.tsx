@@ -8,6 +8,7 @@ export type VisualizerProps = {
   height: number;
   source: AudioNode | undefined;
   drawFrame: DrawFrameFunction;
+  mirror?: boolean;
 };
 
 export type DrawFrameArgs = {
@@ -38,7 +39,7 @@ export type DrawFrameArgs = {
 export type DrawFrameFunction = (args: DrawFrameArgs) => void;
 
 export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
-  ({ width, height, source, drawFrame }, ref) => {
+  ({ width, height, source, drawFrame, mirror = true }, ref) => {
     const canvasRef = useForwardedRef<HTMLCanvasElement>(ref);
 
     useEffect(() => {
@@ -114,12 +115,15 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
 
         canvasContext.scale(1, 1);
         canvasContext.drawImage(offscreenCanvas, 0, 0);
-        canvasContext.scale(1, -1);
-        canvasContext.drawImage(offscreenCanvas, 0, height * -2);
-        canvasContext.scale(-1, -1);
-        canvasContext.drawImage(offscreenCanvas, width * -2, 0);
-        canvasContext.scale(1, -1);
-        canvasContext.drawImage(offscreenCanvas, width * -2, height * -2);
+
+        if (mirror) {
+          canvasContext.scale(1, -1);
+          canvasContext.drawImage(offscreenCanvas, 0, height * -2);
+          canvasContext.scale(-1, -1);
+          canvasContext.drawImage(offscreenCanvas, width * -2, 0);
+          canvasContext.scale(1, -1);
+          canvasContext.drawImage(offscreenCanvas, width * -2, height * -2);
+        }
       }
       draw();
 
@@ -127,7 +131,7 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
         done = true;
         console.log("wiring down");
       };
-    }, [width, height, source, drawFrame, canvasRef]);
+    }, [width, height, source, drawFrame, canvasRef, mirror]);
 
     return (
       <canvas
