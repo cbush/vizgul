@@ -2,6 +2,10 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Slider } from "rsuite";
 import { DrawFrameArgs, DrawFrameFunction } from "./Visualizer";
 import { mix } from "./Color";
+import {
+  noteInfoFromFrequency,
+  fftIndexToFreqRange,
+} from "./frequencyAnalysis";
 
 export function useDrawFrameController() {
   const drawFrameRef = useRef<DrawFrameFunction>((args) => {});
@@ -25,6 +29,14 @@ export function useDrawFrameController() {
         (acc, cur, i) => (cur > acc[0] ? [cur, i] : acc),
         [0, 0]
       );
+      const frequency = fftIndexToFreqRange(maxIndex);
+      /*
+      console.log(
+        noteInfoFromFrequency(frequency[0] + (frequency[1] - frequency[0]) / 2)
+          .nameAndOctave
+      );
+      */
+
       for (let y = 0; y < height; ++y) {
         const index = frequencyData.length - Math.floor(y) - 1;
         const value = frequencyData[index];
@@ -47,7 +59,7 @@ export function useDrawFrameController() {
           } else {
             const nextPixel = lastFrame.get(
               Math.min(x + 1, width - 1),
-              Math.floor(y + something * 0.1) % frequencyData.length
+              Math.floor(y + something * 0.1) % height
             );
             pixels.set(x, y, (c) => mix(nextPixel, c, 0));
           }

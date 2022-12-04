@@ -1,6 +1,7 @@
-import { MutableRefObject, forwardRef, useEffect } from "react";
+import { forwardRef, useEffect } from "react";
 import { MutableRaster, Raster } from "./Raster";
 import { useForwardedRef } from "./useForwardedRef";
+import { EXPECTED_FFT_SIZE } from "./frequencyAnalysis";
 
 export type VisualizerProps = {
   width: number;
@@ -48,7 +49,7 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       }
       console.log("wiring up");
       const analyser = source.context.createAnalyser();
-      analyser.fftSize = height * 2;
+      analyser.fftSize = EXPECTED_FFT_SIZE;
       source.connect(analyser);
 
       const frequencyData = new Uint8Array(analyser.frequencyBinCount);

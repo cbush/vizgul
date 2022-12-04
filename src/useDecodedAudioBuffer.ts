@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { EXPECTED_SAMPLERATE_HZ } from "./frequencyAnalysis";
 
 export const useDecodedAudioBuffer = ({
   buffer,
@@ -19,6 +20,11 @@ export const useDecodedAudioBuffer = ({
     audioContext.decodeAudioData(buffer).then((newDecodedData) => {
       if (tornDown) {
         return;
+      }
+      if (newDecodedData.sampleRate !== EXPECTED_SAMPLERATE_HZ) {
+        console.warn(
+          `Unexpected sample rate of ${newDecodedData.sampleRate}. Things may not work properly.`
+        );
       }
       setDecodedData(newDecodedData);
     });
