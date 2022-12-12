@@ -60,12 +60,12 @@ export function useDrawFrameController() {
         const subarray = logIndexSubarray(
           frequencyData,
           // It seems the first half of the frequencies are useless
-          Math.floor(i / 2) + height / 2
+          Math.floor(i * 0.6) + height / 2
         );
         const value =
           subarray.reduce((acc, cur) => acc + cur, 0) / (subarray.length / 3);
         for (let x = 0; x < width; ++x) {
-          if (x === width - 1) {
+          if (x / width >= value / (256 * 3)) {
             pixels.set(x, y, {
               r: clamp(value - 256, 0, 255),
               g: clamp(value, 0, 255),
@@ -75,7 +75,7 @@ export function useDrawFrameController() {
           } else {
             const nextPixel = lastFrame.get(
               clamp(Math.floor(x + width * 0.05), 0, width - 1),
-              y
+              (y + 1) % height
             );
             pixels.set(x, y, nextPixel);
           }
