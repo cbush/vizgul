@@ -40,6 +40,8 @@ export type DrawFrameFunction = (args: DrawFrameArgs) => void;
 
 export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
   ({ width, height, source, drawFrame, mirror = true }, ref) => {
+    const canvasWidth = 720;
+    const canvasHeight = 1280;
     const canvasRef = useForwardedRef<HTMLCanvasElement>(ref);
 
     useEffect(() => {
@@ -113,10 +115,17 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
         offscreenCanvasContext.putImageData(current, 0, 0);
         canvasContext.clearRect(0, 0, width * 2, height * 2);
 
-        canvasContext.scale(1, 1);
-        canvasContext.drawImage(offscreenCanvas, 0, 0);
-
-        if (mirror) {
+        const scaleX = canvasWidth / width;
+        const scaleY = canvasHeight / height;
+        canvasContext.resetTransform();
+        if (!mirror) {
+          canvasContext.scale(scaleX, scaleY);
+          canvasContext.drawImage(offscreenCanvas, 0, 0);
+        } else {
+          const halfScaleX = scaleX / 2;
+          const halfScaleY = scaleY / 2;
+          canvasContext.scale(halfScaleX, halfScaleY);
+          canvasContext.drawImage(offscreenCanvas, 0, 0);
           canvasContext.scale(1, -1);
           canvasContext.drawImage(offscreenCanvas, 0, height * -2);
           canvasContext.scale(-1, -1);
@@ -137,8 +146,8 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
       <canvas
         key="visualizer"
         ref={canvasRef}
-        width={width * 2}
-        height={height * 2}
+        width={canvasWidth}
+        height={canvasHeight}
       />
     );
   }

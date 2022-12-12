@@ -31,7 +31,11 @@ export const Recorder = ({
 
     const mediaRecorder = new MediaRecorder(captureStream, {
       mimeType: "video/webm; codecs=h264",
+      videoBitsPerSecond: 8 * 1024 * 1024,
     });
+    console.log(
+      `MediaRecorder video bitrate: ${mediaRecorder.videoBitsPerSecond}, audio bitrate: ${mediaRecorder.audioBitsPerSecond}`
+    );
     const onDataAvailable = (event: BlobEvent) => {
       chunks.push(event.data);
     };
