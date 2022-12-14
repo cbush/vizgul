@@ -45,12 +45,10 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
     const canvasRef = useForwardedRef<HTMLCanvasElement>(ref);
 
     useEffect(() => {
-      console.log("entry");
       if (!source) {
         console.log("no source");
         return;
       }
-      console.log("wiring up");
       const analyser = source.context.createAnalyser();
       analyser.fftSize = EXPECTED_FFT_SIZE;
       source.connect(analyser);
@@ -90,7 +88,6 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
           !canvasContext ||
           !offscreenCanvasContext
         ) {
-          console.log("done drawing");
           return;
         }
 
@@ -138,7 +135,6 @@ export const Visualizer = forwardRef<HTMLCanvasElement, VisualizerProps>(
 
       return () => {
         done = true;
-        console.log("wiring down");
       };
     }, [width, height, source, drawFrame, canvasRef, mirror]);
 

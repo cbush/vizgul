@@ -6,24 +6,26 @@ import { useDecodedAudioBuffer } from "./useDecodedAudioBuffer";
 import { Visualizer } from "./Visualizer";
 import { Recorder } from "./Recorder";
 import { useDrawFrameController } from "./DrawFrameController";
-import { Slider } from "rsuite";
 
 function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const height = 512;
   const WIDTH = Math.floor(height * (9 / 16));
+
   const [audioContext] = useState(new AudioContext());
-
-  const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
-
   const [play, setPlay] = useState(false);
   const [frameMode, setFrameMode] = useState(false);
   const [saveRecordings, setSaveRecordings] = useState(false);
   const [mirror, setMirror] = useState(false);
 
+  const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
   const source = useAudioSource({
     buffer: audioBuffer,
     context: audioContext,
-    play,
+    isEnabled: play,
+
+    // When the recorder is in use, it says when to start playing after setup
+    // complete
+    autoplay: play && !saveRecordings,
   });
 
   const { controller, drawFrame } = useDrawFrameController();
@@ -43,7 +45,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
         <Recorder
           canvas={canvasRef.current}
           context={audioContext}
-          isRecording={play && saveRecordings}
+          isEnabled={play && saveRecordings}
           onRecordingStopped={(url) => {
             if (!saveRecordings) {
               return;
@@ -59,6 +61,11 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
             }, 0);
           }}
           source={source}
+          onRecordingStarted={() => {
+            // Start playback here to avoid losing the initial frames as the
+            // recorder is set up
+            source.start();
+          }}
         />
       )}
       <div className="controlPanel">

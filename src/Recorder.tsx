@@ -4,7 +4,8 @@ export type RecorderProps = {
   context: AudioContext;
   source: AudioNode;
   canvas: HTMLCanvasElement;
-  isRecording: boolean;
+  isEnabled: boolean;
+  onRecordingStarted(): void;
   onRecordingStopped(dataUrl: string): void;
 };
 
@@ -12,8 +13,9 @@ export const Recorder = ({
   context,
   source,
   canvas,
-  isRecording,
+  isEnabled,
   onRecordingStopped,
+  onRecordingStarted,
 }: RecorderProps): JSX.Element => {
   const [chunks] = useState<Blob[]>(() => []);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | undefined>(
@@ -22,6 +24,7 @@ export const Recorder = ({
 
   // Connect streams, initialize media recorder
   useEffect(() => {
+    chunks.length = 0;
     const mediaStreamDestination = context.createMediaStreamDestination();
     const audioTrack = mediaStreamDestination.stream.getAudioTracks()[0];
     source.connect(mediaStreamDestination);
@@ -44,7 +47,6 @@ export const Recorder = ({
     setMediaRecorder(mediaRecorder);
 
     return () => {
-      chunks.length = 0;
       mediaRecorder.removeEventListener("dataavailable", onDataAvailable);
       captureStream.removeTrack(audioTrack);
       mediaStreamDestination.disconnect();
@@ -58,8 +60,9 @@ export const Recorder = ({
       return;
     }
 
-    if (isRecording && mediaRecorder.state === "inactive") {
+    if (isEnabled && mediaRecorder.state === "inactive") {
       mediaRecorder.start(500);
+      onRecordingStarted();
     }
 
     return () => {
@@ -72,9 +75,16 @@ export const Recorder = ({
       onRecordingStopped(url);
       setTimeout(() => {
         URL.revokeObjectURL(url);
-      }, 0);
+      }, 20);
+      chunks.length = 0;
     };
-  }, [mediaRecorder, chunks, isRecording, onRecordingStopped]);
+  }, [
+    mediaRecorder,
+    chunks,
+    isEnabled,
+    onRecordingStopped,
+    onRecordingStarted,
+  ]);
 
   return <></>;
 };

@@ -3,10 +3,6 @@ import { Slider } from "rsuite";
 import { DrawFrameArgs, DrawFrameFunction } from "./Visualizer";
 
 import clamp from "clamp";
-import {
-  EXPECTED_FIRST_USEFUL_FFT_INDEX,
-  FFT_BUCKET_FREQ_SIZE,
-} from "./frequencyAnalysis";
 
 export function useDrawFrameController() {
   const drawFrameRef = useRef<DrawFrameFunction>((args) => {});

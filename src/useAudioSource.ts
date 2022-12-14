@@ -1,16 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-export type UsePlaybackArgs = {
+export type UseAudioSourceArgs = {
   buffer: AudioBuffer | undefined;
   context: AudioContext;
-  play: boolean;
+
+  /**
+    Whether the source may play. Stops playback when set to false.
+   */
+  isEnabled: boolean;
+
+  /**
+    Whether to start the playback immediately upon load.
+   */
+  autoplay?: boolean;
 };
 
 export const useAudioSource = ({
   buffer,
   context,
-  play,
-}: UsePlaybackArgs): AudioBufferSourceNode | undefined => {
+  isEnabled,
+  autoplay = false,
+}: UseAudioSourceArgs): AudioBufferSourceNode | undefined => {
   const [source, setSource] = useState<AudioBufferSourceNode | undefined>(
     undefined
   );
@@ -31,7 +41,7 @@ export const useAudioSource = ({
       setSource(undefined);
     };
 
-    if (!buffer || !play) {
+    if (!buffer || !isEnabled) {
       stop();
       return;
     }
@@ -44,12 +54,33 @@ export const useAudioSource = ({
     newSource.buffer = buffer;
     newSource.addEventListener("ended", onEnded);
     newSource.connect(context.destination);
-    newSource.start();
     setSource(newSource);
     return () => {
       stop();
     };
-  }, [buffer, context, play, source, setSource]);
+  }, [buffer, context, isEnabled, autoplay, source, setSource]);
+
+  useAutoplay({ source, autoplay });
 
   return source;
 };
+
+function useAutoplay({
+  source,
+  autoplay,
+}: {
+  source: AudioBufferSourceNode | undefined;
+  autoplay: boolean;
+}) {
+  const isStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoplay && source && !isStartedRef.current) {
+      // You may not want to autoplay if, say, recording, lest the recorder miss
+      // the first few frames of playback while it's being set up.
+      source.start();
+      isStartedRef.current = true;
+    } else if (!source) {
+      isStartedRef.current = false;
+    }
+  }, [source, autoplay]);
+}
