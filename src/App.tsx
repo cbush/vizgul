@@ -12,23 +12,29 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
   const WIDTH = Math.floor(height * (9 / 16));
 
   const [audioContext] = useState(new AudioContext());
-  const [play, setPlay] = useState(false);
+
+  const [isPlayButtonPressed, setIsPlayButtonPressed] = useState(false);
+  const [isRecordButtonPressed, setIsRecordButtonPressed] = useState(false);
+
   const [frameMode, setFrameMode] = useState(false);
-  const [saveRecordings, setSaveRecordings] = useState(false);
   const [mirror, setMirror] = useState(false);
 
   const audioBuffer = useDecodedAudioBuffer({ buffer, audioContext });
+
+  const pressStop = () => {
+    setIsPlayButtonPressed(false);
+    setIsRecordButtonPressed(false);
+  };
+
   const source = useAudioSource({
     buffer: audioBuffer,
     context: audioContext,
-    isEnabled: play,
-    onPlaybackEnded() {
-      setPlay(false);
-    },
+    isEnabled: isPlayButtonPressed || isRecordButtonPressed,
+    onPlaybackEnded: pressStop,
 
     // When the recorder is in use, it says when to start playing after setup
     // complete
-    autoplay: play && !saveRecordings,
+    autoplay: isPlayButtonPressed && !isRecordButtonPressed,
   });
 
   const { controller, drawFrame } = useDrawFrameController();
@@ -48,11 +54,8 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
         <Recorder
           canvas={canvasRef.current}
           context={audioContext}
-          isEnabled={play && saveRecordings}
+          isEnabled={isRecordButtonPressed}
           onRecordingStopped={(url) => {
-            if (!saveRecordings) {
-              return;
-            }
             const a = document.createElement("a");
             a.setAttribute("style", "display: none;");
             a.href = url;
@@ -72,19 +75,28 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
         />
       )}
       <div className="controlPanel">
-        <button onClick={() => setPlay(!play)}>{play ? "Stop" : "Play"}</button>
+        <button
+          disabled={isPlayButtonPressed || isRecordButtonPressed}
+          onClick={() => setIsPlayButtonPressed(true)}
+        >
+          ▶️
+        </button>
+        <button
+          disabled={isPlayButtonPressed || isRecordButtonPressed}
+          onClick={() => setIsRecordButtonPressed(true)}
+        >
+          ⏺️
+        </button>
+        <button
+          disabled={!isPlayButtonPressed && !isRecordButtonPressed}
+          onClick={pressStop}
+        >
+          ⏹️
+        </button>
+
         <button onClick={() => setFrameMode(!frameMode)}>
           {frameMode ? "Frame Mode 2" : "Frame Mode 1"}
         </button>
-        <label>
-          <input
-            type="checkbox"
-            disabled={play}
-            checked={saveRecordings}
-            onChange={() => setSaveRecordings(!saveRecordings)}
-          />
-          Save Recordings
-        </label>
         <br />
         <label>
           <input
