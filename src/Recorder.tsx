@@ -24,6 +24,10 @@ export const Recorder = ({
 
   // Connect streams, initialize media recorder
   useEffect(() => {
+    if (!isEnabled) {
+      return;
+    }
+
     chunks.length = 0;
     const mediaStreamDestination = context.createMediaStreamDestination();
     const audioTrack = mediaStreamDestination.stream.getAudioTracks()[0];
@@ -32,27 +36,27 @@ export const Recorder = ({
     const captureStream = canvas.captureStream(30);
     captureStream.addTrack(audioTrack);
 
-    const mediaRecorder = new MediaRecorder(captureStream, {
+    const newMediaRecorder = new MediaRecorder(captureStream, {
       mimeType: "video/webm; codecs=h264",
       videoBitsPerSecond: 8 * 1024 * 1024,
     });
     console.log(
-      `MediaRecorder video bitrate: ${mediaRecorder.videoBitsPerSecond}, audio bitrate: ${mediaRecorder.audioBitsPerSecond}`
+      `MediaRecorder video bitrate: ${newMediaRecorder.videoBitsPerSecond}, audio bitrate: ${newMediaRecorder.audioBitsPerSecond}`
     );
     const onDataAvailable = (event: BlobEvent) => {
       chunks.push(event.data);
     };
-    mediaRecorder.addEventListener("dataavailable", onDataAvailable);
+    newMediaRecorder.addEventListener("dataavailable", onDataAvailable);
 
-    setMediaRecorder(mediaRecorder);
+    setMediaRecorder(newMediaRecorder);
 
     return () => {
-      mediaRecorder.removeEventListener("dataavailable", onDataAvailable);
+      newMediaRecorder.removeEventListener("dataavailable", onDataAvailable);
       captureStream.removeTrack(audioTrack);
       mediaStreamDestination.disconnect();
       setMediaRecorder(undefined);
     };
-  }, [context, canvas, source, chunks]);
+  }, [context, canvas, source, chunks, isEnabled]);
 
   // Control the recorder
   useEffect(() => {

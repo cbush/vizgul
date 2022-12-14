@@ -13,12 +13,18 @@ export type UseAudioSourceArgs = {
     Whether to start the playback immediately upon load.
    */
   autoplay?: boolean;
+
+  /**
+    Called when the source playback ended.
+   */
+  onPlaybackEnded?(): void;
 };
 
 export const useAudioSource = ({
   buffer,
   context,
   isEnabled,
+  onPlaybackEnded,
   autoplay = false,
 }: UseAudioSourceArgs): AudioBufferSourceNode | undefined => {
   const [source, setSource] = useState<AudioBufferSourceNode | undefined>(
@@ -29,6 +35,7 @@ export const useAudioSource = ({
     const onEnded = () => {
       source?.disconnect();
       setSource(undefined);
+      onPlaybackEnded && onPlaybackEnded();
     };
 
     const stop = () => {
@@ -58,7 +65,15 @@ export const useAudioSource = ({
     return () => {
       stop();
     };
-  }, [buffer, context, isEnabled, autoplay, source, setSource]);
+  }, [
+    buffer,
+    context,
+    isEnabled,
+    autoplay,
+    source,
+    onPlaybackEnded,
+    setSource,
+  ]);
 
   useAutoplay({ source, autoplay });
 

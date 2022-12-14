@@ -22,6 +22,9 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
     buffer: audioBuffer,
     context: audioContext,
     isEnabled: play,
+    onPlaybackEnded() {
+      setPlay(false);
+    },
 
     // When the recorder is in use, it says when to start playing after setup
     // complete
@@ -76,6 +79,7 @@ function Player({ buffer }: { buffer: ArrayBuffer | undefined }) {
         <label>
           <input
             type="checkbox"
+            disabled={play}
             checked={saveRecordings}
             onChange={() => setSaveRecordings(!saveRecordings)}
           />
